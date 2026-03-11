@@ -1,0 +1,28 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Node.js
+node_modules/
+.svelte-kit/
+
+# SQLite databases
+*.db
+*.db-wal
+*.db-shm
+
+# Data directory
+data/
+
+# Environment variables
+.env
+
+# Local agent artifacts
+.sisyphus/

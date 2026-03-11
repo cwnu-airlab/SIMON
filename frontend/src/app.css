@@ -1,0 +1,32 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+:root {
+  --color-primary: #104486;
+  --color-accent: #9BC2F9;
+  --color-primary-light: #9BC2F9;
+  --color-primary-bg: #F0F6FF;
+  --color-bg: #F8FAFD;
+  --color-bg-light: #f6f7f8;
+  --color-surface: #FFFFFF;
+  --color-text: #1A1A2E;
+  --color-text-secondary: #6B7280;
+  --color-text-muted: #4f6e96;
+  --color-border: #E2E8F0;
+  --color-user-bubble: #104486;
+  --color-ai-bubble: #F0F6FF;
+  --color-code-bg: #1E293B;
+  --color-error-bg: #FEF2F2;
+  --color-error-text: #991B1B;
+  --color-error-border: #FCA5A5;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
