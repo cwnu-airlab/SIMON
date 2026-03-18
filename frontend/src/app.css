@@ -2,7 +2,7 @@
 @plugin "@tailwindcss/typography";
 
 :root {
-  --color-primary: #104486;
+  --color-primary: #005a9a;
   --color-accent: #9BC2F9;
   --color-primary-light: #9BC2F9;
   --color-primary-bg: #F0F6FF;
@@ -13,7 +13,7 @@
   --color-text-secondary: #6B7280;
   --color-text-muted: #4f6e96;
   --color-border: #E2E8F0;
-  --color-user-bubble: #104486;
+  --color-user-bubble: #005a9a;
   --color-ai-bubble: #F0F6FF;
   --color-code-bg: #1E293B;
   --color-error-bg: #FEF2F2;
@@ -29,4 +29,16 @@ body {
 
 .material-symbols-outlined {
   font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+/* Sidebar drawer: mobile slide-in, desktop static */
+@media (min-width: 1024px) {
+  .sidebar-drawer {
+    position: static !important;
+    z-index: auto !important;
+    width: 280px !important;
+    max-width: none !important;
+    transform: none !important;
+    transition: none !important;
+  }
 }

@@ -42,9 +42,9 @@
     :global(.markdown-body) {
         --tw-prose-body: #1e293b;
         --tw-prose-headings: #0f172a;
-        --tw-prose-links: #104486;
+        --tw-prose-links: #005a9a;
         --tw-prose-bold: #0f172a;
-        --tw-prose-code: #104486;
+        --tw-prose-code: #005a9a;
         --tw-prose-quotes: #334155;
         --tw-prose-quote-borders: #9BC2F9;
     }
@@ -58,7 +58,7 @@
 
     :global(.markdown-body code) {
         background-color: #E8F0FE;
-        color: #104486;
+        color: #005a9a;
         padding: 0.2rem 0.4rem;
         border-radius: 0.25rem;
         font-size: 0.875em;

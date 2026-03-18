@@ -7,7 +7,7 @@
         temperature: 0.7,
         max_tokens: 4096,
         top_p: 0.9,
-        enable_thinking: true,
+        enable_thinking: false,
     };
 
     interface Props {
@@ -136,11 +136,11 @@
 
     <!-- panel -->
     <aside
-        class="fixed right-0 top-0 h-full w-96 max-w-[90vw] bg-[var(--color-surface)] shadow-xl z-50 flex flex-col"
+        class="fixed right-0 top-0 z-50 flex h-full w-full flex-col bg-[var(--color-surface)] shadow-xl sm:w-96 sm:max-w-[90vw]"
         transition:fly={{ x: 384, duration: 200 }}
     >
         <!-- header -->
-        <div class="flex items-center justify-between px-6 py-4 border-b border-[var(--color-border)]">
+        <div class="flex items-center justify-between border-b border-[var(--color-border)] px-4 py-4 sm:px-6">
             <h2 class="text-lg font-semibold text-[var(--color-text)]">Settings</h2>
             <button
                 onclick={onclose}
@@ -161,7 +161,7 @@
             </div>
         {:else}
             <!-- scrollable body -->
-            <div class="flex-1 overflow-y-auto p-6 space-y-6">
+            <div class="flex-1 overflow-y-auto space-y-6 p-4 sm:p-6">
                 <!-- system prompt -->
                 <section>
                     <label for="settings-system-prompt" class="block text-sm font-medium text-[var(--color-text)] mb-2">
@@ -283,7 +283,7 @@
             </div>
 
             <!-- footer -->
-            <div class="px-6 py-4 border-t border-[var(--color-border)] space-y-3">
+            <div class="space-y-3 border-t border-[var(--color-border)] px-4 py-4 sm:px-6">
                 {#if error}
                     <div class="px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
                         {error}

@@ -18,6 +18,7 @@
         isAuthenticated,
         logout,
     } from "$lib/stores/auth";
+    import { closeMobileSidebar } from "$lib/stores/ui";
 
     let renamingId: string | null = $state(null);
     let renameValue: string = $state("");
@@ -57,6 +58,7 @@
             const created = await createConversation();
             $conversations = [created, ...$conversations];
             $activeConversationId = created.id;
+            closeMobileSidebar();
         } catch (e) {
             $sidebarError =
                 e instanceof Error ? e.message : "Failed to create conversation";
@@ -111,6 +113,16 @@
         if (e.key === "Escape") renamingId = null;
     }
 
+    function handleSelectConversation(id: string) {
+        $activeConversationId = id;
+        closeMobileSidebar();
+    }
+
+    async function handleLogout() {
+        await logout();
+        closeMobileSidebar();
+    }
+
     $effect(() => {
         if (!$isAuthenticated) {
             $conversations = [];
@@ -127,19 +139,29 @@
     });
 </script>
 
-<aside class="w-[280px] bg-white border-r border-slate-200 flex flex-col shrink-0 h-screen overflow-hidden">
+<aside class="flex h-full w-full flex-col overflow-hidden border-r border-slate-200 bg-white shadow-xl lg:shadow-none">
     <!-- Header -->
-    <div class="bg-[#104486] text-white px-6 py-4 flex items-center gap-3 shrink-0">
-        <span class="material-symbols-outlined !text-[24px]">forum</span>
-        <h1 class="text-xl font-bold tracking-tight">SIMON</h1>
+    <div class="flex items-center justify-between gap-3 bg-[#005a9a] px-5 py-4 text-white shrink-0 lg:px-6">
+        <div class="flex items-center gap-3 min-w-0">
+            <span class="material-symbols-outlined !text-[24px] shrink-0">forum</span>
+            <h1 class="truncate text-xl font-bold tracking-tight">SIMON</h1>
+        </div>
+        <button
+            type="button"
+            class="rounded-lg p-1 text-white/80 transition hover:bg-white/10 hover:text-white lg:hidden"
+            aria-label="Close navigation"
+            onclick={closeMobileSidebar}
+        >
+            <span class="material-symbols-outlined !text-[20px]">close</span>
+        </button>
     </div>
 
     <!-- New Chat Button -->
-    <div class="p-4 shrink-0 border-b border-slate-200">
+    <div class="border-b border-slate-200 p-3 shrink-0 sm:p-4">
         <button
             onclick={handleNewChat}
             disabled={!$isAuthenticated || $authLoading}
-            class="w-full bg-[#9BC2F9] hover:bg-[#8ab6f4] text-[#104486] font-semibold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-colors cursor-pointer"
+            class="w-full bg-[#9BC2F9] hover:bg-[#8ab6f4] text-[#005a9a] font-semibold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-colors cursor-pointer"
         >
             <span class="material-symbols-outlined !text-[20px]">add</span>
             <span>New Chat</span>
@@ -184,28 +206,28 @@
                                 bind:value={renameValue}
                                 onblur={submitRename}
                                 onkeydown={handleRenameKeydown}
-                                class="flex-1 bg-slate-100 rounded-lg px-2 py-1 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-[#104486]/30 border border-slate-200"
+                                class="flex-1 bg-slate-100 rounded-lg px-2 py-1 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-[#005a9a]/30 border border-slate-200"
                             />
                         </div>
                     {:else}
                         <button
-                            onclick={() => ($activeConversationId = conv.id)}
-                            class="w-full text-left px-4 py-3 flex items-start gap-3 transition-colors cursor-pointer
+                            onclick={() => handleSelectConversation(conv.id)}
+                            class="w-full cursor-pointer px-4 py-3 pr-20 text-left flex items-start gap-3 transition-colors md:pr-4
                                    {isActive ? 'bg-[#F0F6FF]' : 'hover:bg-slate-50'}"
                         >
                             {#if isActive}
-                                <div class="absolute left-0 top-0 bottom-0 w-1 bg-[#104486] rounded-r"></div>
+                                <div class="absolute left-0 top-0 bottom-0 w-1 bg-[#005a9a] rounded-r"></div>
                             {/if}
-                            <span class="material-symbols-outlined !text-[20px] mt-0.5 shrink-0 {isActive ? 'text-[#104486]' : 'text-slate-400'}">chat_bubble</span>
+                            <span class="material-symbols-outlined !text-[20px] mt-0.5 shrink-0 {isActive ? 'text-[#005a9a]' : 'text-slate-400'}">chat_bubble</span>
                             <div class="flex-1 min-w-0">
                                 <p class="text-sm font-medium truncate {isActive ? 'text-slate-900' : 'text-slate-700'}">{conv.title}</p>
                             </div>
                         </button>
                         <!-- Hover Actions -->
-                        <div class="hidden group-hover:flex items-center gap-0.5 absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 rounded-lg px-1 shadow-sm border border-slate-100">
+                        <div class="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-0.5 rounded-lg border border-slate-100 bg-white/90 px-1 shadow-sm transition-opacity md:pointer-events-none md:opacity-0 md:group-hover:pointer-events-auto md:group-hover:opacity-100 md:group-focus-within:pointer-events-auto md:group-focus-within:opacity-100">
                             <button
                                 onclick={() => startRename(conv.id, conv.title)}
-                                class="rounded p-1.5 text-slate-400 hover:text-[#104486] hover:bg-slate-100 cursor-pointer transition-colors"
+                                class="rounded p-1.5 text-slate-400 hover:text-[#005a9a] hover:bg-slate-100 cursor-pointer transition-colors"
                                 title="Rename"
                             >
                                 <span class="material-symbols-outlined !text-[16px]">edit</span>
@@ -225,7 +247,7 @@
     </nav>
 
     <!-- User Profile Bottom -->
-    <div class="p-4 border-t border-slate-200 shrink-0">
+    <div class="border-t border-slate-200 p-3 shrink-0 sm:p-4">
         {#if $currentUser}
             <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
                 <div class="flex items-center justify-between gap-3">
@@ -238,11 +260,11 @@
                             <p class="text-xs text-slate-400">Signed in</p>
                         </div>
                     </div>
-                    <button
-                        type="button"
-                        onclick={() => void logout()}
-                        class="rounded-lg px-2 py-1 text-xs font-medium text-slate-500 transition-colors hover:bg-white hover:text-slate-700"
-                    >
+                        <button
+                            type="button"
+                            onclick={() => void handleLogout()}
+                            class="rounded-lg px-2 py-1 text-xs font-medium text-slate-500 transition-colors hover:bg-white hover:text-slate-700"
+                        >
                         Logout
                     </button>
                 </div>
@@ -254,7 +276,10 @@
                         </div>
                         <button
                             type="button"
-                            onclick={() => (apiKeysModalOpen = true)}
+                            onclick={() => {
+                                apiKeysModalOpen = true;
+                                closeMobileSidebar();
+                            }}
                             class="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800"
                         >
                             <span class="material-symbols-outlined !text-[16px]">vpn_key</span>

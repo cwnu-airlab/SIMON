@@ -222,9 +222,9 @@
   });
 </script>
 
-<section class="flex h-full flex-col bg-white">
+<section class="flex h-full min-h-0 flex-col bg-white">
   {#if $chatError}
-    <div class="bg-[#FEF2F2] border-b border-[#FCA5A5] px-6 py-4 flex items-center justify-between shrink-0">
+    <div class="flex shrink-0 flex-col gap-3 border-b border-[#FCA5A5] bg-[#FEF2F2] px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
       <div class="flex items-center gap-3 text-[#991B1B]">
         <span class="material-symbols-outlined text-xl">warning</span>
         <p class="text-sm font-bold">{$chatError}</p>
@@ -239,32 +239,32 @@
   {/if}
 
   {#if showWelcome}
-    <div class="flex-1 overflow-y-auto flex flex-col items-center justify-center p-8">
-      <div class="max-w-2xl w-full text-center mb-12">
-        <div class="inline-flex items-center justify-center size-20 rounded-2xl bg-[#104486] text-[#9BC2F9] mb-6 shadow-xl shadow-[#104486]/20">
+    <div class="flex flex-1 flex-col items-center justify-center overflow-y-auto p-6 sm:p-8">
+      <div class="mb-10 w-full max-w-2xl text-center sm:mb-12">
+        <div class="mb-5 inline-flex size-16 items-center justify-center rounded-2xl bg-[#005a9a] text-[#9BC2F9] shadow-xl shadow-[#005a9a]/20 sm:mb-6 sm:size-20">
           <span class="material-symbols-outlined text-5xl" style="font-variation-settings: 'FILL' 1">forum</span>
         </div>
-        <h2 class="text-4xl font-black text-slate-900 mb-3">Welcome to SIMON</h2>
-        <p class="text-slate-500 text-lg">Start a new conversation to chat with AI</p>
+        <h2 class="mb-3 text-3xl font-black text-slate-900 sm:text-4xl">Welcome to SIMON</h2>
+        <p class="text-base text-slate-500 sm:text-lg">Start a new conversation to chat with AI</p>
       </div>
-      <div class="max-w-3xl w-full grid grid-cols-2 gap-4">
+      <div class="grid w-full max-w-3xl grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
         {#each suggestions as suggestion}
           <button
             onclick={() => handleSend(suggestion.title)}
-            class="flex flex-col items-start text-left p-5 bg-white border border-[#9BC2F9]/30 rounded-xl hover:shadow-lg hover:border-[#9BC2F9] transition-all group cursor-pointer"
+            class="group flex cursor-pointer flex-col items-start rounded-xl border border-[#9BC2F9]/30 bg-white p-4 text-left transition-all hover:border-[#9BC2F9] hover:shadow-lg sm:p-5"
           >
-            <span class="material-symbols-outlined text-[#104486] mb-3">{suggestion.icon}</span>
-            <p class="text-slate-900 font-semibold mb-1 group-hover:text-[#104486] transition-colors">{suggestion.title}</p>
+            <span class="material-symbols-outlined text-[#005a9a] mb-3">{suggestion.icon}</span>
+            <p class="text-slate-900 font-semibold mb-1 group-hover:text-[#005a9a] transition-colors">{suggestion.title}</p>
             <p class="text-slate-400 text-sm">{suggestion.desc}</p>
           </button>
         {/each}
       </div>
     </div>
   {:else}
-    <div bind:this={scroller} class="flex-1 overflow-y-auto p-6">
-      <div class="mx-auto max-w-4xl space-y-2">
+    <div bind:this={scroller} class="flex-1 overflow-y-auto p-4 sm:p-6">
+      <div class="mx-auto w-full max-w-4xl space-y-2">
         {#if $messages.length === 0 && $activeConversationId}
-          <div class="flex flex-col items-center justify-center py-20 text-center">
+          <div class="flex flex-col items-center justify-center py-16 text-center sm:py-20">
             <span class="material-symbols-outlined text-4xl text-slate-300 mb-3">chat</span>
             <p class="text-slate-400">Send a message to start the conversation.</p>
           </div>
@@ -275,11 +275,11 @@
         {/each}
 
         {#if $isStreaming && ($streamingReasoning || $streamingContent)}
-          <article class="mb-6 flex items-start gap-3">
-            <div class="size-8 rounded-full bg-[#104486] flex items-center justify-center shrink-0 mt-1 shadow-sm">
+          <article class="mb-6 flex items-start gap-2 sm:gap-3">
+            <div class="mt-1 flex size-7 shrink-0 items-center justify-center rounded-full bg-[#005a9a] shadow-sm sm:size-8">
               <span class="material-symbols-outlined text-white !text-[18px]">smart_toy</span>
             </div>
-            <div class="flex flex-col gap-2 max-w-[80%]">
+            <div class="flex min-w-0 max-w-[88%] flex-col gap-2 sm:max-w-[80%]">
               <div class="flex items-center gap-2">
                 <span class="text-xs text-[var(--color-text-muted)] px-1">SIMON</span>
                 {#if !$streamingContent}
@@ -290,7 +290,7 @@
                 <ThinkingCollapsible reasoning={$streamingReasoning} isStreaming={true} />
               {/if}
               {#if $streamingContent}
-                <div class={`bg-[#F0F6FF] text-slate-800 px-5 py-3.5 rounded-2xl rounded-tl-sm shadow-sm border border-blue-50 text-[15px] leading-relaxed ${$markdownEnabled ? '' : 'whitespace-pre-wrap'}`}>
+                <div class={`rounded-2xl rounded-tl-sm border border-blue-50 bg-[#F0F6FF] px-4 py-3 text-[15px] leading-relaxed text-slate-800 shadow-sm sm:px-5 sm:py-3.5 ${$markdownEnabled ? '' : 'whitespace-pre-wrap'}`}>
                   {#if $markdownEnabled}
                     <MarkdownRenderer content={$streamingContent} />
                   {:else}

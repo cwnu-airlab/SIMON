@@ -130,7 +130,7 @@ class LLMService:
             "temperature": model_params.get("temperature", 0.7),
             "max_tokens": model_params.get("max_tokens", 4096),
             "top_p": model_params.get("top_p", 0.9),
-            "chat_template_kwargs": {"enable_thinking": model_params.get("enable_thinking", True)},
+            "chat_template_kwargs": {"enable_thinking": model_params.get("enable_thinking", False)},
         }
 
         stream_timeout = httpx.Timeout(120.0)

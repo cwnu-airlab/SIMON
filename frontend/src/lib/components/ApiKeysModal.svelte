@@ -208,10 +208,10 @@
     ></div>
 
     <aside
-        class="fixed right-0 top-0 z-50 flex h-full w-[28rem] max-w-[92vw] flex-col bg-[var(--color-surface)] shadow-xl"
+        class="fixed right-0 top-0 z-50 flex h-full w-full flex-col bg-[var(--color-surface)] shadow-xl sm:w-[28rem] sm:max-w-[92vw]"
         transition:fly={{ x: 448, duration: 200 }}
     >
-        <div class="border-b border-[var(--color-border)] px-6 py-4">
+        <div class="border-b border-[var(--color-border)] px-4 py-4 sm:px-6">
             <div class="flex items-center justify-between gap-4">
                 <div>
                     <p class="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-text-secondary)]">
@@ -234,16 +234,16 @@
             </div>
         </div>
 
-        <div class="flex-1 overflow-y-auto px-6 py-5">
+        <div class="flex-1 overflow-y-auto px-4 py-5 sm:px-6">
             <section class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
                 <label for="api-key-name" class="mb-2 block text-sm font-medium text-[var(--color-text)]">
                     Create New Key
                 </label>
-                <div class="flex gap-2">
+                <div class="flex flex-col gap-2 sm:flex-row">
                     <input
                         id="api-key-name"
                         bind:value={apiKeyName}
-                        class="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-[#104486] focus:ring-2 focus:ring-[#104486]/15"
+                        class="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-[#005a9a] focus:ring-2 focus:ring-[#005a9a]/15"
                         placeholder="e.g. deployment script"
                         maxlength="50"
                     />
@@ -251,7 +251,7 @@
                         type="button"
                         onclick={() => void handleCreateApiKey()}
                         disabled={creatingApiKey || !apiKeyName.trim()}
-                        class="rounded-xl bg-[#104486] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#0c3366] disabled:cursor-not-allowed disabled:opacity-60"
+                        class="rounded-xl bg-[#005a9a] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#004a80] disabled:cursor-not-allowed disabled:opacity-60"
                     >
                         {creatingApiKey ? "Creating..." : "Create"}
                     </button>

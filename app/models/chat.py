@@ -9,7 +9,7 @@ class ModelParams(BaseModel):
     temperature: float = Field(default=0.7, ge=0.0, le=2.0)
     max_tokens: int = Field(default=4096, ge=1, le=65536)
     top_p: float = Field(default=0.9, ge=0.0, le=1.0)
-    enable_thinking: bool = Field(default=True)
+    enable_thinking: bool = Field(default=False)
 
 
 class ChatMessage(BaseModel):

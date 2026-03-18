@@ -10,6 +10,7 @@ import {
 } from "$lib/api";
 import { chatError, isStreaming, messages, streamingContent, streamingReasoning } from "$lib/stores/chat";
 import { activeConversationId, conversations, sidebarError, sidebarLoading } from "$lib/stores/conversations";
+import { closeMobileSidebar } from "$lib/stores/ui";
 
 export const currentUser = writable<User | null>(null);
 export const authLoading = writable(true);
@@ -37,6 +38,7 @@ function resetChatState(): void {
     isStreaming.set(false);
     streamingContent.set("");
     streamingReasoning.set("");
+    closeMobileSidebar();
 }
 
 export async function initializeAuth(): Promise<void> {

@@ -7,7 +7,7 @@
     <button
         type="button"
         onclick={() => ($markdownEnabled = !$markdownEnabled)}
-        class="w-9 h-5 rounded-full relative focus:outline-none focus:ring-2 focus:ring-[#104486] focus:ring-offset-1 transition-colors {$markdownEnabled ? 'bg-[#104486]' : 'bg-slate-300'}"
+        class="w-9 h-5 rounded-full relative focus:outline-none focus:ring-2 focus:ring-[#005a9a] focus:ring-offset-1 transition-colors {$markdownEnabled ? 'bg-[#005a9a]' : 'bg-slate-300'}"
         role="switch"
         aria-checked={$markdownEnabled}
         aria-label="Toggle markdown rendering"

@@ -48,7 +48,7 @@ def _parse_model_params(raw: str | None) -> ModelParams:
     top_p_value = (
         float(top_p) if isinstance(top_p, (int, float)) and not isinstance(top_p, bool) else 0.9
     )
-    enable_thinking_value = enable_thinking if isinstance(enable_thinking, bool) else True
+    enable_thinking_value = enable_thinking if isinstance(enable_thinking, bool) else False
 
     return ModelParams(
         temperature=temperature_value,

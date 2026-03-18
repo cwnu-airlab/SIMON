@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS conversations (
     title TEXT NOT NULL DEFAULT 'New Chat',
     system_prompt TEXT DEFAULT '',
     model_params TEXT
-        DEFAULT '{"temperature":0.7,"max_tokens":4096,"top_p":0.9,"enable_thinking":true}',
+        DEFAULT '{"temperature":0.7,"max_tokens":4096,"top_p":0.9,"enable_thinking":false}',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
