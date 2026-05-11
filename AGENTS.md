@@ -1,3 +1,65 @@
+<!-- Generated: 2026-04-29 | Updated: 2026-04-29 -->
+
+# SIMON
+
+## Purpose
+Self-hosted chat service with two access layers: a SvelteKit web UI with account-based history, and an OpenAI-compatible API surface (`/v1`) for external tools and agent clients. Backend proxies requests to a configured vLLM server.
+
+## Key Files
+| File | Description |
+|------|-------------|
+| `pyproject.toml` | Python project metadata and dependencies (FastAPI, httpx, aiosqlite, pydantic-settings) |
+| `uv.lock` | Locked Python dependency tree managed by `uv` |
+| `ruff.toml` | Ruff lint/format configuration |
+| `Dockerfile` | Backend container image (Python 3.13-slim + uv) |
+| `docker-compose.yml` | Three-service deployment: nginx, backend, frontend |
+| `.env.example` | Template for runtime environment variables |
+| `.python-version` | Pins Python interpreter version |
+| `README.md` | User-facing project documentation |
+| `tutorial.md` / `tutorial.ko.md` | OpenCode setup guides (English / Korean) |
+| `LICENSE` | License file |
+
+## Subdirectories
+| Directory | Purpose |
+|-----------|---------|
+| `app/` | FastAPI backend source (see `app/AGENTS.md`) |
+| `frontend/` | SvelteKit 2 / Svelte 5 web UI (see `frontend/AGENTS.md`) |
+| `nginx/` | Reverse proxy config for Docker Compose (see `nginx/AGENTS.md`) |
+| `tests/` | Backend pytest suite (see `tests/AGENTS.md`) |
+| `data/` | Runtime SQLite database directory (gitignored content) |
+| `dist/` | Build output directory |
+
+## For AI Agents
+
+### Working In This Directory
+- Backend: edit Python under `app/`. Run with `uv run python -m app.main` (port 8000).
+- Frontend: edit Svelte/TS under `frontend/src/`. Run with `npm run dev` from `frontend/`.
+- Database schema lives in `app/database.py` (`SCHEMA_SQL`). Tables auto-create on startup; use the `_run_migrations` helper for additive schema changes.
+- Settings come from `.env` via `pydantic-settings` in `app/config.py`. Never hardcode secrets.
+- The `/v1/*` and `/api/*` paths are routed by inner nginx; the rest goes to the SvelteKit container.
+
+### Testing Requirements
+- Backend: `uv run pytest tests/ -v`. Single test: `uv run pytest tests/test_chat.py::test_name -v`.
+- Frontend: `cd frontend && npm run check` for type-checking; `npm run build` for production build.
+- Lint/format: `uv run ruff check .` and `uv run ruff format .`.
+
+### Common Patterns
+- Backend uses absolute imports (`from app.models import ...`).
+- Async-only: SQLite via `aiosqlite`, HTTP via `httpx.AsyncClient`.
+- Streaming responses use SSE (`text/event-stream`).
+- Sessions are SHA-256 hashed before persistence; raw API keys are shown only once at creation.
+
+## Dependencies
+
+### External
+- `fastapi`, `uvicorn[standard]` — async web framework
+- `httpx` — async HTTP client for vLLM proxying
+- `aiosqlite` — async SQLite driver
+- `pydantic-settings` — typed env-driven configuration
+- SvelteKit 2, Svelte 5, Tailwind CSS 4, marked, highlight.js, dompurify, katex (frontend)
+
+<!-- MANUAL: Reference content below — preserved across regeneration -->
+
 # SIMON Development Guide
 
 ## Build
