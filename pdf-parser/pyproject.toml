@@ -1,0 +1,32 @@
+[project]
+name = "pdf-parser"
+version = "0.1.0"
+description = "OpenDataLoader 기반 PDF 파싱 마이크로서비스 for SIMON"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "easyocr",
+    "fastapi",
+    "opendataloader-pdf[hybrid]",
+    "pypdf",
+    "python-multipart",
+    "uvicorn[standard]",
+]
+
+[tool.uv]
+dev-dependencies = [
+    "ruff",
+    "pytest",
+    "pytest-asyncio",
+    "httpx",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+
+[tool.ruff.format]
+quote-style = "double"

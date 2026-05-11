@@ -71,7 +71,7 @@ async def create_user_session(user_id: str) -> str:
     await create_session(
         session_id=hash_session_token(session_token),
         user_id=user_id,
-        expires_at=build_session_expiry().isoformat(),
+        expires_at=build_session_expiry(),
     )
     return session_token
 
@@ -111,12 +111,11 @@ async def _get_session_user_payload(session_token: str | None) -> UserPayload | 
         return None
 
     expires_at_raw = session_user["expires_at"]
-    if not isinstance(expires_at_raw, str):
+    if not isinstance(expires_at_raw, datetime):
         _ = await delete_session(hash_session_token(session_token))
         return None
 
-    expires_at = datetime.fromisoformat(expires_at_raw)
-    if expires_at <= datetime.now(UTC):
+    if expires_at_raw <= datetime.now(UTC):
         _ = await delete_session(hash_session_token(session_token))
         return None
 

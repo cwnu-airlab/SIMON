@@ -8,6 +8,7 @@ import {
     signup as signupRequest,
     type User,
 } from "$lib/api";
+import { resetAttachments } from "$lib/stores/attachments";
 import { chatError, isStreaming, messages, streamingContent, streamingReasoning } from "$lib/stores/chat";
 import { activeConversationId, conversations, sidebarError, sidebarLoading } from "$lib/stores/conversations";
 import { closeMobileSidebar } from "$lib/stores/ui";
@@ -38,6 +39,7 @@ function resetChatState(): void {
     isStreaming.set(false);
     streamingContent.set("");
     streamingReasoning.set("");
+    resetAttachments();
     closeMobileSidebar();
 }
 

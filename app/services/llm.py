@@ -174,7 +174,11 @@ class LLMService:
     async def _stream_response_lines(
         response: httpx.Response,
     ) -> AsyncGenerator[bytes]:
-        _ = response.raise_for_status()
+        if response.status_code >= 400:
+            body = await response.aread()
+            text = body.decode("utf-8", errors="replace").strip()
+            snippet = text[:500] if text else f"HTTP {response.status_code} (empty body)"
+            raise LLMServiceError(f"vLLM HTTP {response.status_code}: {snippet}")
 
         raw_content_type = cast(str, response.headers.get("content-type", ""))
         content_type = raw_content_type

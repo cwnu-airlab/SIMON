@@ -8,6 +8,8 @@ services:
     depends_on:
       - backend
       - frontend
+      - vllm0
+      - vllm1
     restart: unless-stopped
 
   backend:
@@ -15,14 +17,55 @@ services:
       context: .
       dockerfile: Dockerfile
     environment:
-      - VLLM_BASE_URL=${VLLM_BASE_URL:-http://host.docker.internal:7777}
+      # Backend reaches vLLM through the inner nginx LB (internal listen 8081).
+      - VLLM_BASE_URL=${VLLM_BASE_URL:-http://nginx:8081}
       - VLLM_MODEL=${VLLM_MODEL:-Qwen/Qwen3.5-9B}
-      - DATABASE_PATH=data/chat.db
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-simon}:${POSTGRES_PASSWORD:?required}@postgres:5432/${POSTGRES_DB:-simon}
       - SESSION_COOKIE_SECURE=${SESSION_COOKIE_SECURE:-true}
+      - PDF_PARSER_URL=${PDF_PARSER_URL:-http://pdf-parser:8080}
+      - PDF_MAX_MARKDOWN_CHARS=${PDF_MAX_MARKDOWN_CHARS:-80000}
     volumes:
       - simon-data:/app/data
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    depends_on:
+      pdf-parser:
+        condition: service_started
+      vllm0:
+        condition: service_started
+      vllm1:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-simon}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?required}
+      POSTGRES_DB: ${POSTGRES_DB:-simon}
+    volumes:
+      - simon-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-simon} -d ${POSTGRES_DB:-simon}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  pdf-parser:
+    build:
+      context: ./pdf-parser
+      dockerfile: Dockerfile
+    environment:
+      MAX_FILE_MB: "${PDF_MAX_FILE_MB:-50}"
+      MAX_PAGES: "${PDF_MAX_PAGES:-100}"
+      OCR_LANG: "${PDF_OCR_LANG:-ko,en}"
+    volumes:
+      - pdf-parser-cache:/cache
+    expose:
+      - "8080"
     restart: unless-stopped
 
   frontend:
@@ -36,5 +79,81 @@ services:
       - ORIGIN=${ORIGIN:-http://localhost:3080}
     restart: unless-stopped
 
+  # vLLM workers — one per GPU. Cmd matches the currently-running containers
+  # so `docker compose up -d` does not recreate them unnecessarily.
+  vllm0:
+    image: vllm/vllm-openai:nightly
+    runtime: nvidia
+    environment:
+      CUDA_VISIBLE_DEVICES: "0"
+      HUGGING_FACE_HUB_TOKEN: ${HF_TOKEN:?required}
+    volumes:
+      - ${HOME}/.cache/huggingface:/root/.cache/huggingface
+    ipc: host
+    command:
+      - Qwen/Qwen3.5-9B
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --dtype
+      - auto
+      - --reasoning-parser
+      - qwen3
+      - --enable-prefix-caching
+      - --enable-chunked-prefill
+      - --gpu-memory-utilization
+      - "0.90"
+      - --max-model-len
+      - "262144"
+      - --max-num-seqs
+      - "32"
+      - --max-num-batched-tokens
+      - "16384"
+      - --enable-auto-tool-choice
+      - --tool-call-parser
+      - qwen3_coder
+    expose:
+      - "8000"
+    restart: unless-stopped
+
+  vllm1:
+    image: vllm/vllm-openai:nightly
+    runtime: nvidia
+    environment:
+      CUDA_VISIBLE_DEVICES: "1"
+      HUGGING_FACE_HUB_TOKEN: ${HF_TOKEN:?required}
+    volumes:
+      - ${HOME}/.cache/huggingface:/root/.cache/huggingface
+    ipc: host
+    command:
+      - Qwen/Qwen3.5-9B
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --dtype
+      - auto
+      - --reasoning-parser
+      - qwen3
+      - --enable-prefix-caching
+      - --enable-chunked-prefill
+      - --gpu-memory-utilization
+      - "0.90"
+      - --max-model-len
+      - "262144"
+      - --max-num-seqs
+      - "32"
+      - --max-num-batched-tokens
+      - "16384"
+      - --enable-auto-tool-choice
+      - --tool-call-parser
+      - qwen3_coder
+    expose:
+      - "8000"
+    restart: unless-stopped
+
 volumes:
   simon-data:
+  pdf-parser-cache:
+  simon-pgdata:

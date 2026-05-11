@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from app.models.chat import (
     ConversationResponse,
     ConversationUpdate,
+    MessageAttachmentRef,
     MessageResponse,
     ModelParams,
 )
@@ -18,6 +19,7 @@ from app.services.database import (
     get_conversation,
     get_messages,
     list_conversations,
+    list_image_attachments_by_message,
     update_conversation,
 )
 
@@ -69,7 +71,22 @@ def _to_conversation_response(row: dict[str, object]) -> ConversationResponse:
     )
 
 
-def _to_message_response(row: dict[str, object]) -> MessageResponse:
+def _to_message_response(
+    row: dict[str, object],
+    attachments: list[dict[str, object]] | None = None,
+) -> MessageResponse:
+    refs: list[MessageAttachmentRef] = []
+    for att in attachments or []:
+        refs.append(
+            MessageAttachmentRef(
+                id=cast(int, att["id"]),
+                filename=str(att["filename"]),
+                attachment_type=str(att.get("attachment_type") or "image"),
+                mime_type=cast(str | None, att.get("mime_type")),
+                width=cast(int | None, att.get("width")),
+                height=cast(int | None, att.get("height")),
+            )
+        )
     return MessageResponse(
         id=cast(int, row["id"]),
         conversation_id=str(row["conversation_id"]),
@@ -77,6 +94,7 @@ def _to_message_response(row: dict[str, object]) -> MessageResponse:
         content=str(row["content"]),
         reasoning=cast(str | None, row.get("reasoning")),
         created_at=str(row["created_at"]),
+        attachments=refs,
     )
 
 
@@ -112,9 +130,13 @@ async def get_conversation_endpoint(
             detail=f"Conversation {conversation_id} not found",
         )
     messages = await get_messages(user_id, conversation_id)
+    images_by_msg = await list_image_attachments_by_message(user_id, conversation_id)
     return {
         "conversation": _to_conversation_response(row),
-        "messages": [_to_message_response(m) for m in messages],
+        "messages": [
+            _to_message_response(m, images_by_msg.get(cast(int, m["id"])))
+            for m in messages
+        ],
     }
 
 

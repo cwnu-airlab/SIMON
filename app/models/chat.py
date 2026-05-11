@@ -25,6 +25,7 @@ class ChatRequest(BaseModel):
 
     message: str = Field(min_length=1, max_length=65536)
     conversation_id: str | None = None
+    attachment_ids: list[int] | None = None
 
 
 class ConversationResponse(BaseModel):
@@ -46,6 +47,17 @@ class ConversationUpdate(BaseModel):
     model_params: ModelParams | None = None
 
 
+class MessageAttachmentRef(BaseModel):
+    """Lightweight attachment reference embedded in MessageResponse."""
+
+    id: int
+    filename: str
+    attachment_type: str
+    mime_type: str | None = None
+    width: int | None = None
+    height: int | None = None
+
+
 class MessageResponse(BaseModel):
     """Response containing a message from the conversation."""
 
@@ -55,3 +67,4 @@ class MessageResponse(BaseModel):
     content: str
     reasoning: str | None = None
     created_at: str
+    attachments: list[MessageAttachmentRef] = Field(default_factory=list)
