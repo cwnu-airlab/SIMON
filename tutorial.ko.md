@@ -266,7 +266,172 @@ for chunk in stream:
         print(content, end="", flush=True)
 ```
 
-## 11. OpenCode가 실제로 쓰는 SIMON API
+## 11. App API로 PDF와 이미지 업로드하기
+
+OpenAI 호환 `/v1` 엔드포인트는 파일 첨부를 지원하지 않습니다 — 첨부는 app-native `/api` 경로에서 처리합니다. API 키는 같은 것을 양쪽에서 그대로 사용할 수 있습니다. PDF와 이미지는 같은 엔드포인트(`POST /api/conversations/{id}/attachments`)를 공유하며, 백엔드가 `Content-Type`으로 분기합니다.
+
+| 유형 | MIME | 최대 크기 | 스코프 | 페이지 |
+|---|---|---|---|---|
+| PDF | `application/pdf` | 50 MB | conversation 스코프 (매 turn마다 system 블록으로 자동 주입) | ≤ 100 |
+| 이미지 | `image/png`, `image/jpeg`, `image/webp` | 10 MB | message 스코프 (turn 별로 `attachment_ids`로 바인딩) | — |
+
+### 사전 준비
+
+```bash
+export SIMON_API_KEY="your-simon-api-key"
+export BASE="https://air.changwon.ac.kr/simon"
+
+# 새 conversation 생성 (또는 기존 ID 재사용)
+export CONV=$(curl -s -X POST "$BASE/api/conversations" \
+  -H "Authorization: Bearer $SIMON_API_KEY" | jq -r .id)
+echo "CONV=$CONV"
+```
+
+### PDF 업로드 (conversation 스코프)
+
+```bash
+curl -X POST "$BASE/api/conversations/$CONV/attachments" \
+  -H "Authorization: Bearer $SIMON_API_KEY" \
+  -F "file=@report.pdf;type=application/pdf"
+```
+
+응답:
+
+```json
+{
+  "id": 42,
+  "filename": "report.pdf",
+  "pages": 17,
+  "attachment_type": "pdf",
+  "message_id": null,
+  "created_at": "2026-05-11T05:00:12+00:00"
+}
+```
+
+스캔 PDF의 서버 측 OCR은 20–40초 가량 걸릴 수 있습니다 (첫 호출은 OCR 모델 로딩 포함). 클라이언트 타임아웃을 충분히 길게 잡으세요.
+
+한 번 업로드된 PDF는 이후 같은 conversation의 모든 chat turn에 추출된 markdown이 system 메시지로 자동 주입됩니다 — PDF에는 `attachment_ids`를 지정할 필요 없습니다.
+
+### 채팅 메시지 보내기
+
+App chat 엔드포인트(`/api/chat/completions`)는 `conversation_id`, `message`, 그리고 선택적으로 `attachment_ids`를 받습니다. 응답은 SSE 스트림입니다.
+
+```bash
+curl -N -X POST "$BASE/api/chat/completions" \
+  -H "Authorization: Bearer $SIMON_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d "{\"conversation_id\":\"$CONV\",\"message\":\"이 문서를 요약해줘.\"}"
+```
+
+### 이미지 업로드 (message 스코프)
+
+```bash
+ATT=$(curl -s -X POST "$BASE/api/conversations/$CONV/attachments" \
+  -H "Authorization: Bearer $SIMON_API_KEY" \
+  -F "file=@photo.jpg;type=image/jpeg" | jq -r .id)
+echo "ATT=$ATT"
+```
+
+백엔드는 이미지를 1568×1568에 맞게 리사이즈하고, JPEG로 재인코딩(EXIF 제거)하며, SHA-256으로 dedup합니다. 채팅 turn에서 이미지를 사용하려면 그 id를 `attachment_ids`로 넘깁니다.
+
+```bash
+curl -N -X POST "$BASE/api/chat/completions" \
+  -H "Authorization: Bearer $SIMON_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"conversation_id\":\"$CONV\",
+    \"message\":\"이 사진을 설명해줘.\",
+    \"attachment_ids\":[$ATT]
+  }"
+```
+
+한 번 user 메시지에 바인딩된 이미지는 이후 모든 history replay에 자동 포함됩니다 — 다음 turn에는 id를 다시 보낼 필요 없습니다.
+
+여러 이미지 동시 첨부:
+
+```bash
+... -d "{\"message\":\"비교해줘.\",\"attachment_ids\":[43,44,45], ...}"
+```
+
+### Python 통합 예시
+
+```python
+import httpx
+
+BASE = "https://air.changwon.ac.kr/simon"
+KEY  = "your-simon-api-key"
+HEADERS = {"Authorization": f"Bearer {KEY}"}
+
+with httpx.Client(headers=HEADERS, timeout=120) as c:
+    conv = c.post(f"{BASE}/api/conversations").json()["id"]
+
+    # PDF (conversation 스코프)
+    with open("report.pdf", "rb") as f:
+        c.post(
+            f"{BASE}/api/conversations/{conv}/attachments",
+            files={"file": ("report.pdf", f, "application/pdf")},
+        ).raise_for_status()
+
+    # 이미지 (message 스코프)
+    with open("photo.jpg", "rb") as f:
+        img = c.post(
+            f"{BASE}/api/conversations/{conv}/attachments",
+            files={"file": ("photo.jpg", f, "image/jpeg")},
+        ).json()
+
+    with c.stream(
+        "POST", f"{BASE}/api/chat/completions",
+        json={
+            "conversation_id": conv,
+            "message": "PDF를 요약하고 사진도 설명해줘.",
+            "attachment_ids": [img["id"]],
+        },
+    ) as r:
+        for line in r.iter_lines():
+            if line:
+                print(line)
+```
+
+### 조회 / 다운로드 / 삭제
+
+```bash
+# 한 conversation의 모든 첨부 목록
+curl -H "Authorization: Bearer $SIMON_API_KEY" \
+  "$BASE/api/conversations/$CONV/attachments"
+
+# 이미지 원본 바이트 (이미지 첨부만; PDF는 추출된 markdown으로만 저장됨)
+curl -H "Authorization: Bearer $SIMON_API_KEY" \
+  "$BASE/api/conversations/$CONV/attachments/$ATT/raw" \
+  -o photo.jpg
+
+# 삭제 (다른 row에서 참조하지 않으면 디스크의 이미지 파일도 정리됨)
+curl -X DELETE -H "Authorization: Bearer $SIMON_API_KEY" \
+  "$BASE/api/conversations/$CONV/attachments/$ATT"
+```
+
+### 이미지를 `/v1` 경로로 직접 보내기
+
+업로드 단계를 건너뛰고 OpenAI 호환 `/v1/chat/completions`에 이미지를 data URI로 직접 인라인할 수도 있습니다 — 멀티모달 payload는 vLLM으로 그대로 전달됩니다.
+
+```bash
+curl -X POST "$BASE/v1/chat/completions" \
+  -H "Authorization: Bearer $SIMON_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "Qwen/Qwen3.5-9B",
+    "messages": [{
+      "role": "user",
+      "content": [
+        {"type": "text", "text": "이 사진을 설명해줘."},
+        {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,'"$(base64 -w0 photo.jpg)"'"}}
+      ]
+    }]
+  }'
+```
+
+`/v1`은 stateless입니다 — conversation 히스토리 없음, `attachment_ids` 개념 없음. PDF는 `/v1`에서 지원되지 않습니다 — parser sidecar를 사용하는 app `/api` 경로에서만 가능합니다.
+
+## 12. OpenCode가 실제로 쓰는 SIMON API
 
 SIMON은 현재 OpenCode가 이 흐름에 필요한 OpenAI 호환 엔드포인트를 제공합니다.
 

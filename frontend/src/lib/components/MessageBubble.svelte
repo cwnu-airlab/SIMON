@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Message } from "$lib/api";
+  import { attachmentRawUrl, type Message } from "$lib/api";
   import ThinkingCollapsible from "$lib/components/ThinkingCollapsible.svelte";
   import MarkdownRenderer from "$lib/components/MarkdownRenderer.svelte";
   import { markdownEnabled } from "$lib/stores/settings";
@@ -13,15 +13,40 @@
   } = $props();
 
   let isUser = $derived(message.role === "user");
+  let imageAttachments = $derived(
+    (message.attachments ?? []).filter((a) => a.attachment_type === "image"),
+  );
 </script>
 
 {#if isUser}
   <article class="mb-6 flex justify-end gap-2 sm:gap-3 items-end">
     <div class="flex max-w-[85%] flex-col gap-1 items-end sm:max-w-[70%] min-w-0">
       <span class="text-xs text-[var(--color-text-muted)] px-1">You</span>
-      <div class="rounded-2xl rounded-tr-sm bg-[#005a9a] px-4 py-3 text-white shadow-sm sm:px-5 sm:py-3.5">
-        <p class="text-[15px] leading-relaxed whitespace-pre-wrap">{message.content}</p>
-      </div>
+      {#if imageAttachments.length > 0}
+        <div class="flex flex-wrap justify-end gap-2">
+          {#each imageAttachments as att (att.id)}
+            <a
+              href={attachmentRawUrl(message.conversation_id, att.id)}
+              target="_blank"
+              rel="noopener"
+              class="block overflow-hidden rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow"
+              title={att.filename}
+            >
+              <img
+                src={attachmentRawUrl(message.conversation_id, att.id)}
+                alt={att.filename}
+                class="block max-h-72 max-w-[18rem] object-contain bg-slate-50"
+                loading="lazy"
+              />
+            </a>
+          {/each}
+        </div>
+      {/if}
+      {#if message.content}
+        <div class="rounded-2xl rounded-tr-sm bg-[#005a9a] px-4 py-3 text-white shadow-sm sm:px-5 sm:py-3.5">
+          <p class="text-[15px] leading-relaxed whitespace-pre-wrap">{message.content}</p>
+        </div>
+      {/if}
       <p class="text-[11px] text-[var(--color-text-muted)] px-1">
         {new Date(message.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
       </p>

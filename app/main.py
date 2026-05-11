@@ -6,8 +6,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.database import init_db
-from app.routers import auth, chat, conversations, openai
+from app.database import close_pool, create_pool, init_db
+from app.routers import attachments, auth, chat, conversations, openai
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +18,8 @@ http_client: httpx.AsyncClient | None = None
 async def lifespan(app: FastAPI):
     global http_client
 
+    pool = await create_pool()
+    app.state.db_pool = pool
     await init_db()
     logger.info("Application startup")
     client = httpx.AsyncClient(timeout=httpx.Timeout(120.0))
@@ -31,6 +33,8 @@ async def lifespan(app: FastAPI):
             await client.aclose()
         app.state.http_client = None
         http_client = None
+        await close_pool()
+        app.state.db_pool = None
         logger.info("Application shutdown")
 
 
@@ -48,6 +52,7 @@ app.include_router(conversations.router)
 app.include_router(auth.router)
 app.include_router(chat.router)
 app.include_router(openai.router)
+app.include_router(attachments.router)
 
 
 @app.get("/api/health")

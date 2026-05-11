@@ -1,6 +1,5 @@
 from typing import Annotated
 
-import aiosqlite
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 
 from app.config import settings
@@ -28,6 +27,7 @@ from app.services.auth import (
     verify_password,
 )
 from app.services.database import (
+    IntegrityViolation,
     create_api_key,
     create_user,
     get_user_by_username,
@@ -70,7 +70,7 @@ async def signup(body: SignupRequest, response: Response) -> AuthSessionResponse
             password_hash=password_hash,
             password_salt=password_salt,
         )
-    except aiosqlite.IntegrityError as exc:
+    except IntegrityViolation as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Username is already taken",

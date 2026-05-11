@@ -266,7 +266,172 @@ for chunk in stream:
         print(content, end="", flush=True)
 ```
 
-## 11. What SIMON Exposes to OpenCode
+## 11. Uploading PDFs and Images via the App API
+
+The OpenAI-compatible `/v1` endpoints do not support file attachments — those live on the app-native `/api` routes. The same API key works on both. PDF and image upload share one endpoint (`POST /api/conversations/{id}/attachments`); the backend dispatches on `Content-Type`.
+
+| Type | MIME | Max size | Scope | Pages |
+|---|---|---|---|---|
+| PDF | `application/pdf` | 50 MB | conversation-scoped (auto-injected every turn as a system block) | ≤ 100 |
+| Image | `image/png`, `image/jpeg`, `image/webp` | 10 MB | message-scoped (bind per turn via `attachment_ids`) | — |
+
+### Setup
+
+```bash
+export SIMON_API_KEY="your-simon-api-key"
+export BASE="https://air.changwon.ac.kr/simon"
+
+# Create a new conversation (or reuse an existing id)
+export CONV=$(curl -s -X POST "$BASE/api/conversations" \
+  -H "Authorization: Bearer $SIMON_API_KEY" | jq -r .id)
+echo "CONV=$CONV"
+```
+
+### Upload a PDF (conversation-scoped)
+
+```bash
+curl -X POST "$BASE/api/conversations/$CONV/attachments" \
+  -H "Authorization: Bearer $SIMON_API_KEY" \
+  -F "file=@report.pdf;type=application/pdf"
+```
+
+Response:
+
+```json
+{
+  "id": 42,
+  "filename": "report.pdf",
+  "pages": 17,
+  "attachment_type": "pdf",
+  "message_id": null,
+  "created_at": "2026-05-11T05:00:12+00:00"
+}
+```
+
+Server-side OCR can take 20–40 seconds for scan PDFs (the first call also loads OCR models). Use a generous client timeout.
+
+Once uploaded, every subsequent chat turn on the same conversation automatically receives the extracted markdown as a system message — no `attachment_ids` needed for PDFs.
+
+### Send a chat message
+
+The app chat endpoint (`/api/chat/completions`) takes `conversation_id`, `message`, and optionally `attachment_ids`. It streams the response as SSE:
+
+```bash
+curl -N -X POST "$BASE/api/chat/completions" \
+  -H "Authorization: Bearer $SIMON_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d "{\"conversation_id\":\"$CONV\",\"message\":\"Summarize this document.\"}"
+```
+
+### Upload an image (message-scoped)
+
+```bash
+ATT=$(curl -s -X POST "$BASE/api/conversations/$CONV/attachments" \
+  -H "Authorization: Bearer $SIMON_API_KEY" \
+  -F "file=@photo.jpg;type=image/jpeg" | jq -r .id)
+echo "ATT=$ATT"
+```
+
+The backend resizes the image to fit 1568×1568, re-encodes it as JPEG (stripping EXIF), and deduplicates by SHA-256. To use the image in a chat turn, pass its id in `attachment_ids`:
+
+```bash
+curl -N -X POST "$BASE/api/chat/completions" \
+  -H "Authorization: Bearer $SIMON_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"conversation_id\":\"$CONV\",
+    \"message\":\"What is in this image?\",
+    \"attachment_ids\":[$ATT]
+  }"
+```
+
+Once bound to a user message, the image is preserved across all future history replays — you do not need to re-send the id on subsequent turns.
+
+Multiple images at once:
+
+```bash
+... -d "{\"message\":\"Compare these.\",\"attachment_ids\":[43,44,45], ...}"
+```
+
+### Python combined example
+
+```python
+import httpx
+
+BASE = "https://air.changwon.ac.kr/simon"
+KEY  = "your-simon-api-key"
+HEADERS = {"Authorization": f"Bearer {KEY}"}
+
+with httpx.Client(headers=HEADERS, timeout=120) as c:
+    conv = c.post(f"{BASE}/api/conversations").json()["id"]
+
+    # PDF (conversation-scoped)
+    with open("report.pdf", "rb") as f:
+        c.post(
+            f"{BASE}/api/conversations/{conv}/attachments",
+            files={"file": ("report.pdf", f, "application/pdf")},
+        ).raise_for_status()
+
+    # Image (message-scoped)
+    with open("photo.jpg", "rb") as f:
+        img = c.post(
+            f"{BASE}/api/conversations/{conv}/attachments",
+            files={"file": ("photo.jpg", f, "image/jpeg")},
+        ).json()
+
+    with c.stream(
+        "POST", f"{BASE}/api/chat/completions",
+        json={
+            "conversation_id": conv,
+            "message": "Summarize the PDF and describe the image.",
+            "attachment_ids": [img["id"]],
+        },
+    ) as r:
+        for line in r.iter_lines():
+            if line:
+                print(line)
+```
+
+### Listing, fetching, deleting
+
+```bash
+# All attachments in a conversation
+curl -H "Authorization: Bearer $SIMON_API_KEY" \
+  "$BASE/api/conversations/$CONV/attachments"
+
+# Raw image bytes (image attachments only; PDFs are stored as extracted markdown)
+curl -H "Authorization: Bearer $SIMON_API_KEY" \
+  "$BASE/api/conversations/$CONV/attachments/$ATT/raw" \
+  -o photo.jpg
+
+# Delete (the image file is reaped from disk if no other row references it)
+curl -X DELETE -H "Authorization: Bearer $SIMON_API_KEY" \
+  "$BASE/api/conversations/$CONV/attachments/$ATT"
+```
+
+### Inlining an image on `/v1` instead
+
+If you would rather skip the upload step and inline the image directly as a data URI on the OpenAI-compatible path, `/v1/chat/completions` forwards multimodal payloads as-is to vLLM:
+
+```bash
+curl -X POST "$BASE/v1/chat/completions" \
+  -H "Authorization: Bearer $SIMON_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "Qwen/Qwen3.5-9B",
+    "messages": [{
+      "role": "user",
+      "content": [
+        {"type": "text", "text": "Describe this image."},
+        {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,'"$(base64 -w0 photo.jpg)"'"}}
+      ]
+    }]
+  }'
+```
+
+`/v1` is stateless — no conversation history, no `attachment_ids`. PDFs are not supported on `/v1`; they only flow through the app `/api` routes that own the parser sidecar.
+
+## 12. What SIMON Exposes to OpenCode
 
 SIMON currently supports the OpenAI-compatible endpoints OpenCode needs for this flow:
 

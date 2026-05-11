@@ -1,0 +1,33 @@
+# Python venvs / caches
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.ruff_cache/
+.pytest_cache/
+
+# Frontend artifacts
+node_modules/
+.svelte-kit/
+frontend/build/
+frontend/.svelte-kit/
+frontend/node_modules/
+dist/
+
+# VCS / editor / planning
+.git/
+.idea/
+.vscode/
+.claude/
+.omc/
+.sisyphus/
+progress.txt
+
+# Secrets & runtime data — DO NOT overwrite remote
+.env
+data/chat.db
+data/chat.db-shm
+data/chat.db-wal
+
+# Local rsync helper itself (optional)
+.rsync-exclude

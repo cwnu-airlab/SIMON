@@ -8,11 +8,21 @@ dependencies = [
     "fastapi",
     "uvicorn[standard]",
     "httpx",
-    "aiosqlite",
+    "asyncpg",
     "pydantic-settings",
+    "python-multipart",
+    "pillow",
 ]
 
 [project.optional-dependencies]
 dev = [
     "ruff",
+    "pytest",
+    "pytest-asyncio",
+    "httpx",
+    "testcontainers[postgres]",
 ]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

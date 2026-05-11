@@ -7,13 +7,20 @@
     ApiError,
     fetchConversation,
     fetchConversations,
+    listAttachments,
     streamChatCompletion,
   } from "$lib/api";
+  import AttachmentChips from "$lib/components/AttachmentChips.svelte";
   import ChatInput from "$lib/components/ChatInput.svelte";
   import MessageBubble from "$lib/components/MessageBubble.svelte";
   import ThinkingCollapsible from "$lib/components/ThinkingCollapsible.svelte";
   import MarkdownRenderer from "$lib/components/MarkdownRenderer.svelte";
   import { markdownEnabled } from "$lib/stores/settings";
+  import {
+    attachmentError,
+    conversationAttachments,
+    pendingMessageAttachments,
+  } from "$lib/stores/attachments";
   import { currentUser } from "$lib/stores/auth";
   import {
     chatError,
@@ -66,10 +73,37 @@
     }
   }
 
+  async function loadConversationAttachments(conversationId: string | null): Promise<void> {
+    if (!conversationId) {
+      conversationAttachments.set([]);
+      pendingMessageAttachments.set([]);
+      return;
+    }
+    try {
+      const list = await listAttachments(conversationId);
+      // Orphan images (message_id === null) were uploaded but never sent in a
+      // user message — likely the tab was refreshed mid-upload. Resurface them
+      // as pending thumbnails so the user can either send or remove them.
+      const pendingImages = list.filter(
+        (a) => a.attachment_type === "image" && a.message_id == null,
+      );
+      const rest = list.filter(
+        (a) => !(a.attachment_type === "image" && a.message_id == null),
+      );
+      conversationAttachments.set(rest);
+      pendingMessageAttachments.set(pendingImages);
+      attachmentError.set(null);
+    } catch (error) {
+      conversationAttachments.set([]);
+      attachmentError.set(normalizeError(error));
+    }
+  }
+
   async function loadConversationMessages(conversationId: string | null): Promise<void> {
     if (!conversationId) {
       messages.set([]);
       lastLoadedConversationId = null;
+      conversationAttachments.set([]);
       return;
     }
 
@@ -82,14 +116,20 @@
       chatError.set(normalizeError(error));
       messages.set([]);
     }
+    void loadConversationAttachments(conversationId);
   }
 
   async function handleSend(message: string): Promise<void> {
     const userText = message.trim();
-    if (!userText || get(isStreaming) || !$currentUser) {
+    const pending = get(pendingMessageAttachments);
+    if (get(isStreaming) || !$currentUser) {
+      return;
+    }
+    if (!userText && pending.length === 0) {
       return;
     }
 
+    const attachmentIds = pending.map((a) => a.id);
     const tempUserMessage: Message = {
       id: -Date.now(),
       conversation_id: get(activeConversationId) ?? "pending",
@@ -97,9 +137,18 @@
       content: userText,
       reasoning: null,
       created_at: new Date().toISOString(),
+      attachments: pending.map((a) => ({
+        id: a.id,
+        filename: a.filename,
+        attachment_type: a.attachment_type,
+        mime_type: a.mime_type,
+        width: a.width,
+        height: a.height,
+      })),
     };
 
     messages.update((items) => [...items, tempUserMessage]);
+    pendingMessageAttachments.set([]);
     chatError.set(null);
     streamingReasoning.set("");
     streamingContent.set("");
@@ -117,6 +166,7 @@
       await streamChatCompletion({
         message: userText,
         conversationId: get(activeConversationId) ?? undefined,
+        attachmentIds: attachmentIds.length > 0 ? attachmentIds : undefined,
         signal: localController.signal,
         onStart: (conversationId: string) => {
           receivedConversationId = conversationId;
@@ -307,6 +357,7 @@
     </div>
   {/if}
 
+  <AttachmentChips />
   <ChatInput
     isStreaming={$isStreaming}
     disabled={false}

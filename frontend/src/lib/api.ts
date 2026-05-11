@@ -49,6 +49,15 @@ export interface ConversationUpdate {
     model_params?: ModelParams;
 }
 
+export interface MessageAttachmentRef {
+    id: number;
+    filename: string;
+    attachment_type: AttachmentType;
+    mime_type: string | null;
+    width: number | null;
+    height: number | null;
+}
+
 export interface Message {
     id: number;
     conversation_id: string;
@@ -56,6 +65,21 @@ export interface Message {
     content: string;
     reasoning: string | null;
     created_at: string;
+    attachments?: MessageAttachmentRef[];
+}
+
+export type AttachmentType = "pdf" | "image";
+
+export interface AttachmentMeta {
+    id: number;
+    filename: string;
+    pages: number | null;
+    created_at: string;
+    attachment_type: AttachmentType;
+    mime_type: string | null;
+    width: number | null;
+    height: number | null;
+    message_id: number | null;
 }
 
 export interface ConversationDetail {
@@ -83,6 +107,7 @@ interface StreamingChunk {
 export interface StreamChatCompletionOptions {
     message: string;
     conversationId?: string;
+    attachmentIds?: number[];
     signal?: AbortSignal;
     onStart?: (conversationId: string) => void;
     onReasoningDelta?: (chunk: string) => void;
@@ -271,6 +296,74 @@ export async function fetchConversation(conversationId: string): Promise<Convers
     return handleResponse<ConversationDetail>(res);
 }
 
+export function attachmentRawUrl(conversationId: string, attachmentId: number): string {
+    return buildApiUrl(`/conversations/${conversationId}/attachments/${attachmentId}/raw`);
+}
+
+export async function listAttachments(conversationId: string): Promise<AttachmentMeta[]> {
+    const res = await fetch(buildApiUrl(`/conversations/${conversationId}/attachments`));
+    return handleResponse<AttachmentMeta[]>(res);
+}
+
+export async function uploadAttachment(
+    conversationId: string,
+    file: File,
+    onProgress?: (loaded: number, total: number) => void,
+): Promise<AttachmentMeta> {
+    const form = new FormData();
+    form.append("file", file);
+
+    return new Promise<AttachmentMeta>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", buildApiUrl(`/conversations/${conversationId}/attachments`));
+        xhr.responseType = "text";
+        xhr.upload.onprogress = (event) => {
+            if (event.lengthComputable && onProgress) {
+                onProgress(event.loaded, event.total);
+            }
+        };
+        xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                try {
+                    resolve(JSON.parse(xhr.responseText) as AttachmentMeta);
+                } catch (parseError) {
+                    reject(
+                        new ApiError(
+                            xhr.status,
+                            `Invalid JSON from server: ${(parseError as Error).message}`,
+                        ),
+                    );
+                }
+                return;
+            }
+            let detail = `Upload failed (${xhr.status})`;
+            try {
+                const body = JSON.parse(xhr.responseText) as { detail?: string };
+                if (typeof body.detail === "string" && body.detail) {
+                    detail = body.detail;
+                }
+            } catch {
+                /* keep default detail */
+            }
+            reject(new ApiError(xhr.status, detail));
+        };
+        xhr.onerror = () => reject(new ApiError(0, "Network error during upload"));
+        xhr.onabort = () => reject(new ApiError(0, "Upload aborted"));
+        xhr.send(form);
+    });
+}
+
+export async function deleteAttachment(
+    conversationId: string,
+    attachmentId: number,
+): Promise<void> {
+    const res = await fetch(
+        buildApiUrl(`/conversations/${conversationId}/attachments/${attachmentId}`),
+        { method: "DELETE" },
+    );
+    return handleResponse<void>(res);
+}
+
 export async function streamChatCompletion(options: StreamChatCompletionOptions): Promise<void> {
     const response = await fetch(buildApiUrl("/chat/completions"), {
         method: "POST",
@@ -278,6 +371,7 @@ export async function streamChatCompletion(options: StreamChatCompletionOptions)
         body: JSON.stringify({
             message: options.message,
             conversation_id: options.conversationId,
+            attachment_ids: options.attachmentIds,
         }),
         signal: options.signal,
     });
